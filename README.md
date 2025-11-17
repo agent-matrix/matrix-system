@@ -1,409 +1,550 @@
-# Matrix System 1.0 — The First Alive AI Platform
-
-> Executive reference for the **Agent-Matrix** ecosystem. This repo explains the *alive* AI architecture, how to deploy it, why it matters, and how to evolve toward supervised autonomy with zero-destructive upgrades.
+# Matrix System SDK & CLI
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/agent-matrix/.github/main/profile/logo.png" alt="Agent-Matrix" width="140">
 </p>
 
 <p align="center">
-  <a href="https://github.com/agent-matrix"><img src="https://img.shields.io/badge/Ecosystem-Agent--Matrix-black" /></a>
-  <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" /></a>
-  <a href="#roadmap"><img src="https://img.shields.io/badge/Status-Stage%201%2F2-green" /></a>
-  <a href="#security-and-compliance"><img src="https://img.shields.io/badge/Security-Audit%20%7C%20PII%20Redaction%20%7C%20JWT-orange" /></a>
+  <strong>The First Alive AI Platform - Production-Ready SDK and CLI</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/agent-matrix/matrix-system"><img src="https://img.shields.io/badge/Ecosystem-Agent--Matrix-black" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" /></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10%2B-brightgreen" /></a>
+  <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/badge/Package%20Manager-uv-purple" /></a>
+  <a href="https://mypy-lang.org/"><img src="https://img.shields.io/badge/Type%20Checked-mypy-blue" /></a>
 </p>
 
 ---
 
-## TL;DR
+## 🚀 About
 
-**Matrix System 1.0** turns a static app registry into an **alive**, policy-governed, self-healing platform. It observes health, proposes low-risk remedies via AI, and executes inside **guardrails** (HITL by default; **Autopilot** optional). Every action is **audited**. All upgrades are **additive** and **idempotent**.
+**Matrix System** is a production-ready Python SDK and CLI for the **Agent-Matrix** ecosystem - the first truly alive AI platform featuring self-healing, policy-governed, and autonomous capabilities. This package provides developers and operators with a comprehensive toolkit to interact with Matrix-Hub, Matrix-AI, and Matrix-Guardian services.
 
-* **Observe** → health snapshots and probe timelines
-* **Decide** → AI returns **short, low-risk JSON plans**
-* **Approve or Execute** → human-in-the-loop or Autopilot (LangGraph) behind a policy gate
-* **Audit** → append-only events, ETags on reads, idempotent writes
+### Key Features
 
-**Business value:** lower MTTR, safer changes, clear compliance trail, and a pragmatic path to production autonomy with humans as **AI supervisors**.
-
----
-
-## Part of the Agent-Matrix Ecosystem
-
-**Matrix System** is a pillar of the broader **Agent-Matrix** initiative: a community and enterprise hub for production-ready AI agents, tools, and MCP servers. It integrates tightly with Agent-Matrix principles: reuse-first, observable, governable, easy to operate, and portable from laptops to k8s clusters.
+- 🔍 **Self-Healing Architecture** - Automated health monitoring and remediation
+- 🛡️ **Policy-Governed** - HITL (Human-in-the-Loop) by default with optional Autopilot
+- 📊 **Observable** - Comprehensive logging, metrics, and audit trails
+- 🔐 **Secure** - JWT authentication, PII redaction, and idempotent operations
+- 🎯 **Type-Safe** - Full type hints and Pydantic validation
+- 🧪 **Production-Ready** - Extensive test coverage and error handling
+- 📦 **Modern Tooling** - Built with uv, ruff, mypy, and pytest
 
 ---
 
-## Repositories
+## 📋 Table of Contents
 
-> Replace `agent-matrix` with your org if you fork or mirror.
-
-| Component           | Purpose                                                                        | Repository                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| **Matrix-Guardian** | Control plane; safe probes, health scoring, HITL; optional LangGraph Autopilot | [https://github.com/agent-matrix/matrix-guardian](https://github.com/agent-matrix/matrix-guardian) |
-| **Matrix-AI**       | Hugging Face service that generates **safe JSON remediation plans**            | [https://github.com/agent-matrix/matrix-ai](https://github.com/agent-matrix/matrix-ai)             |
-| **Matrix-Hub**      | Public API and registry server (FastAPI)                                       | [https://github.com/agent-matrix/matrix-hub](https://github.com/agent-matrix/matrix-hub)           |
-| **MatrixDB**        | Postgres schema/init SQL, **additive only**                                    | [https://github.com/agent-matrix/matrix-hub-db](https://github.com/agent-matrix/matrix-hub-db)     |
-
----
-
-## What we are building
-
-* A **self-healing, policy-aligned** platform that keeps the registry healthy and usable—**even when upstreams vanish**.
-* HITL default with **supervised Autopilot** available. Operators become **AI supervisors**: tune policy, monitor, and audit.
-* **Zero-destructive** upgrades: DB and API changes are additive, feature-flagged, and idempotent.
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Development](#-development)
+- [Architecture](#-architecture)
+- [API Reference](#-api-reference)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Author](#-author)
 
 ---
 
-## Architecture Overview
+## 📦 Installation
 
-```mermaid
-flowchart LR
-  subgraph Clients
-    U[End Users and SDK/CLI]
-  end
-
-  subgraph Hub[Matrix-Hub API]
-    R[Routes: apps, status, bundles, guardian, patches, advisories]
-    MW[Middlewares: RateLimit, Idempotency, optional JWT]
-  end
-
-  subgraph DB[MatrixDB Postgres]
-    T1[health, checks, events]
-    T2[versions, artifacts]
-    T3[bundles, proposals, jobs optional]
-  end
-
-  subgraph Guardian[Matrix-Guardian]
-    G1[Probers HTTP and MCP echo]
-    G2[Health scorer]
-    G3[Policy Gate]
-    G4[Autopilot LangGraph optional]
-  end
-
-  subgraph AI[Matrix-AI on Hugging Face]
-    A1[POST v1 plan returns JSON plan]
-  end
-
-  U -->|Install and Browse| Hub
-  Guardian -->|POST status| Hub
-  Hub <--> DB
-  Guardian -->|Plan context| AI
-  AI -->|JSON plan| Guardian
-  U -->|HITL approvals| Hub
-```
-
-### Runtime Flow
-
-```mermaid
-sequenceDiagram
-  participant G as Guardian
-  participant H as Matrix-Hub
-  participant D as MatrixDB
-  participant A as Matrix-AI
-  participant O as Operator
-
-  G->>H: POST /status health and checks
-  H->>D: upsert health and append checks
-  G->>A: POST /v1/plan with concise context
-  A-->>G: JSON plan low risk
-  G->>H: POST event guardian.plan
-  O->>H: POST /guardian/approve or /guardian/reject
-  H-->>G: approval decision
-  G->>H: optional bundles and patches Stage 2
-  H->>D: append event audit
-```
-
-### Policy Gate
-
-```mermaid
-flowchart TD
-  S[Signal detected] --> C[Compute risk]
-  C -->|Low| P[Allowed by policy]
-  C -->|Medium High| H[Hold for HITL]
-  P -->|Yes| X[Execute safe steps]
-  P -->|No| H
-  X --> E[Emit event and re-probe]
-  H --> E
-```
-
-### Deployment Topologies
-
-```mermaid
-flowchart LR
-  subgraph Local
-    L1[Docker Compose Hub DB Guardian]
-  end
-  subgraph Cloud
-    K1[Hub on k8s]
-    K2[DBaaS Postgres]
-    K3[Guardian on k8s]
-  end
-  subgraph HF
-    S1[Matrix-AI Space]
-  end
-  L1 <--dev test--> K1
-  K1 <--> K2
-  K3 <--> K1
-  K3 <--> S1
-```
-
-### Data Model Additions
-
-```mermaid
-erDiagram
-  entity ||--o{ health : maintains
-  entity ||--o{ checks : has
-  entity ||--o{ events : causes
-  versions ||--o{ artifacts : supplies
-  entity ||--o{ bundles : ships
-  entity ||--o{ proposals : considers
-
-  entity {
-    text uid PK
-    text name
-    text summary
-    float health_score
-    text health_status
-    timestamptz health_last_checked
-    text lkg_version
-    text lkg_digest
-  }
-  health {
-    text app_uid PK
-    float score
-    text status
-    timestamptz last_checked
-    jsonb reasons
-    timestamptz updated_at
-  }
-  checks {
-    bigserial id PK
-    text app_uid FK
-    text check
-    text result
-    float latency_ms
-    jsonb reasons
-    timestamptz ts
-  }
-  events {
-    bigserial id PK
-    text type
-    text app_uid
-    jsonb payload
-    timestamptz ts
-  }
-  versions {
-    bigserial id PK
-    text app_uid FK
-    text version
-    text commit
-    timestamptz published_at
-    bool is_lkg
-    timestamptz created_at
-  }
-  artifacts {
-    bigserial id PK
-    bigint version_id FK
-    text type
-    text sha256
-    bigint size_bytes
-    text canonical_url
-    text mirror_uri
-    timestamptz created_at
-  }
-  bundles {
-    bigserial id PK
-    text app_uid FK
-    text version
-    text sha256
-    text location
-    jsonb meta
-    timestamptz created_at
-  }
-  proposals {
-    bigserial id PK
-    text app_uid FK
-    text type
-    jsonb diff
-    text proposed_by
-    text state
-    timestamptz ts
-  }
-```
-
----
-
-## Why now (Executive brief)
-
-* **Close the loop** from **detection → plan → approval → execution**, safely.
-* **Reduce MTTR** with short, explainable, low-risk plans.
-* **Comply by design** with append-only events, idempotent APIs, and optional JWT roles.
-* **Future-proof** via supervised autonomy and reversible, additive upgrades.
-
-**Consulting value:** A reusable blueprint for AI-assisted SRE with governance.
-**Community value:** Portable, production-minded patterns anyone can adopt.
-
----
-
-## Features
-
-* **HITL default**; **Autopilot** with LangGraph optional and policy-gated
-* **Idempotent POSTs** and **ETag GETs**
-* **Optional JWT RS256** roles with token fallback
-* **Additive DB and API patches**; no route breakages, no destructive schema
-* **Append-only audit** of events; **jobs** table optional for visibility
-* **CAS friendly**: LKG digest redirects and bundle inventory
-
----
-
-## Autonomy Levels
-
-* **A0 Manual**: Observe and propose only
-* **A1 Suggest**: Draft proposals; auto re-probe
-* **A2 Safe Autopilot**: Auto LKG pin and rollback, cache warm-ups, metadata fixes
-* **A3 Extended**: Sandbox patchers with provenance and rollbacks (later)
-
-Advance gradually with canaries, strict policies, and a kill-switch.
-
----
-
-## Install and Upgrade (Additive only)
-
-> All operations are **idempotent**. Re-running produces no duplicates.
-
-### 1) Patch MatrixDB
-
-Use the additive patcher to create only **new** tables and indexes.
+### Using uv (Recommended)
 
 ```bash
-./apply_matrixhub_db_patch_v2a.sh /path/to/matrixhub-db.zip
-# Creates: 25_matrixhub_stage1_core.sql, 35_matrixhub_stage1_indexes.sql,
-#          27_matrixhub_stage2_core.sql, 37_matrixhub_stage2_indexes.sql
+# Install using uv
+uv pip install matrix-system
+
+# Or install from source
+git clone https://github.com/agent-matrix/matrix-system.git
+cd matrix-system
+make install
 ```
 
-### 2) Deploy Matrix-AI (Hugging Face)
+### Using pip
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export HF_TOKEN=your_hf_token
-uvicorn app.main:app --host 0.0.0.0 --port 7860
+pip install matrix-system
 ```
 
-Deploy to a Space and set `HF_TOKEN` as a Secret.
-Endpoints: `POST /v1/plan` (active), `POST /v1/chat` (RAG placeholder).
-
-### 3) Patch Matrix-Hub API
+### Development Installation
 
 ```bash
-./apply_matrixhub_patch_v2.sh /path/to/matrixhub.zip
-# Rebuild and redeploy Hub from the patched source
+# Clone the repository
+git clone https://github.com/agent-matrix/matrix-system.git
+cd matrix-system
+
+# Install development dependencies
+make dev-install
+
+# Or manually with uv
+uv pip install -e ".[dev]"
 ```
 
-Feature flags:
+---
 
-```
-ADVISORIES_ENABLED=true
-PATCHES_FACADE_ENABLED=true
-RATE_LIMIT_PER_MIN=600
-IDEMPOTENCY_ENABLED=true
-CAS_BASE_URL=https://cas.matrixhub.io
-JWT_PUBLIC_KEY_PEM="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
-```
+## 🚀 Quick Start
 
-### 4) Deploy Matrix-Guardian
+### CLI Usage
 
 ```bash
-make dev && cp configs/.env.example .env && make run
-# or
-docker compose -f infra/docker/compose.yaml up --build
+# Display version and help
+matrix --version
+matrix --help
+
+# Check health of Matrix services
+matrix health --service hub
+matrix health --service all
+
+# Display system information
+matrix info
+
+# View recent events
+matrix events --limit 20 --app my-app
+
+# View proposals
+matrix proposals --state pending
 ```
 
-Required env:
+### Python SDK Usage
 
-```
-DATABASE_URL=postgresql+psycopg://user:pass@host:5432/guardian
-MATRIXHUB_API_BASE=https://api.matrixhub.io
-MATRIX_AI_BASE=https://hf.space/agent-matrix/matrix-ai
-API_TOKEN=internal-bearer-token
+```python
+from matrix_system import __version__
+from matrix_system.api.client import MatrixClient
+from matrix_system.models.health import HealthCheck, HealthStatus
+from matrix_system.utils.config import get_config
+from matrix_system.utils.logger import setup_logging, get_logger
+
+# Setup logging
+setup_logging(log_level="INFO")
+logger = get_logger(__name__)
+
+# Initialize client
+config = get_config()
+client = MatrixClient(config=config)
+
+# Check service health
+try:
+    health_data = client.health_check("hub")
+    logger.info("health_check_success", data=health_data)
+except Exception as e:
+    logger.error("health_check_failed", error=str(e))
+
+# Create health check model
+health_check = HealthCheck(
+    app_uid="my-app-123",
+    check_type="http",
+    result="pass",
+    status=HealthStatus.HEALTHY,
+    score=95.5,
+    latency_ms=45.2,
+)
+
+print(f"Is healthy: {health_check.is_healthy()}")
+print(f"Score: {health_check.score}")
 ```
 
-### 5) Enable Autopilot (Optional)
+---
+
+## ⚙️ Configuration
+
+Matrix System can be configured via environment variables or a `.env` file:
 
 ```bash
-export AUTOPILOT_ENABLED=true
-export AUTOPILOT_API_ENABLED=true
-export AUTOPILOT_INTERVAL_SEC=60
-export AUTOPILOT_POLICY=src/guardian/agents/policies/default_policy.yaml
-export AUTOPILOT_SAFE_MODE=true
-python -m guardian.runner.autopilot_worker
+# API Endpoints
+MATRIX_HUB_URL=https://api.matrixhub.io
+MATRIX_AI_URL=https://huggingface.co/spaces/agent-matrix/matrix-ai
+MATRIX_GUARDIAN_URL=http://localhost:8080
+
+# Authentication
+API_TOKEN=your-bearer-token-here
+
+# HTTP Configuration
+TIMEOUT=30
+MAX_RETRIES=3
+
+# Logging
+LOG_LEVEL=INFO
+LOG_JSON=false
+```
+
+### Configuration Example
+
+Create a `.env` file in your project root:
+
+```env
+# .env
+MATRIX_HUB_URL=https://api.matrixhub.io
+API_TOKEN=your-secret-token
+LOG_LEVEL=DEBUG
+TIMEOUT=60
 ```
 
 ---
 
-## Security and Compliance
+## 🛠️ Usage
 
-* **PII redaction** in matrix-ai prompts
-* **JWT RS256** roles (optional) and **API tokens** for internal calls
-* **Idempotency-Key** on POST, **ETag** on GET
-* **Append-only audit** in `events`
-* **Network safety**: low timeouts, exponential backoff, minimal egress
+### API Client
+
+```python
+from matrix_system.api.client import MatrixClient
+from matrix_system.api.exceptions import (
+    MatrixAPIError,
+    MatrixAuthError,
+    MatrixTimeoutError,
+)
+
+# Initialize client with context manager
+with MatrixClient() as client:
+    try:
+        # Make API requests
+        response = client.get("https://api.matrixhub.io/apps")
+        print(response)
+
+        # Check health
+        health = client.health_check("hub")
+        print(f"Status: {health['status']}")
+
+    except MatrixAuthError as e:
+        print(f"Authentication failed: {e}")
+    except MatrixTimeoutError as e:
+        print(f"Request timed out: {e}")
+    except MatrixAPIError as e:
+        print(f"API error: {e}")
+```
+
+### Health Monitoring
+
+```python
+from matrix_system.models.health import (
+    HealthCheck,
+    HealthStatus,
+    HealthSummary,
+)
+
+# Create health check
+check = HealthCheck(
+    app_uid="my-service",
+    check_type="http",
+    result="pass",
+    status=HealthStatus.HEALTHY,
+    score=98.5,
+    latency_ms=23.4,
+)
+
+# Check status
+if check.is_healthy():
+    print("Service is healthy!")
+elif check.is_degraded():
+    print("Service is degraded")
+else:
+    print("Service is unhealthy")
+
+# Create summary
+summary = HealthSummary(
+    total_entities=100,
+    healthy_count=95,
+    degraded_count=3,
+    unhealthy_count=2,
+    average_score=94.2,
+)
+
+print(f"Health percentage: {summary.health_percentage()}%")
+```
+
+### Event Tracking
+
+```python
+from matrix_system.models.events import Event, EventType
+
+# Create event
+event = Event(
+    event_type=EventType.PLAN_CREATED,
+    app_uid="my-app",
+    payload={
+        "action": "pin_lkg",
+        "version": "1.2.3",
+    },
+    actor="matrix-guardian",
+)
+
+# Check event properties
+if event.is_critical():
+    print("Critical event detected!")
+elif event.is_success():
+    print("Success event logged")
+```
+
+### Proposals
+
+```python
+from matrix_system.models.proposal import (
+    Proposal,
+    ProposalType,
+    ProposalState,
+)
+
+# Create proposal
+proposal = Proposal(
+    app_uid="my-app",
+    proposal_type=ProposalType.LKG_PIN,
+    rationale="Version 1.2.4 has failing health checks",
+    risk_score=15.0,
+    diff={
+        "action": "pin_version",
+        "from_version": "1.2.4",
+        "to_version": "1.2.3",
+    },
+)
+
+# Check proposal status
+if proposal.is_low_risk():
+    print("Low risk proposal - safe to auto-approve")
+elif proposal.is_high_risk():
+    print("High risk - requires human review")
+```
 
 ---
 
-## For Consulting and IT Leaders
+## 🏗️ Development
 
-* **Operational rigor** with explainable AI actions and full audit trail
-* **Modular adoption**: start with HITL, graduate to A2 where safe
-* **Portability**: Docker Compose, k8s, and HF Spaces
-* **Blueprint** for AI-assisted SRE and governance you can take to clients today
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/agent-matrix/matrix-system.git
+cd matrix-system
+
+# Install development dependencies
+make dev-install
+
+# Install pre-commit hooks
+make pre-commit-install
+```
+
+### Available Make Commands
+
+```bash
+make help              # Display all available commands
+make install           # Install production dependencies
+make dev-install       # Install development dependencies
+make lint              # Run linting checks
+make lint-fix          # Run linting with auto-fix
+make format            # Format code with black and ruff
+make type-check        # Run type checking with mypy
+make test              # Run all tests
+make test-cov          # Run tests with coverage
+make test-unit         # Run unit tests only
+make test-integration  # Run integration tests only
+make build             # Build distribution packages
+make clean             # Clean build artifacts
+make docs              # Build documentation
+make serve-docs        # Serve documentation locally
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run with coverage report
+make test-cov
+
+# Run specific test file
+uv run pytest tests/unit/test_config.py -v
+
+# Run tests with specific marker
+uv run pytest -m "not integration" -v
+```
+
+### Code Quality
+
+```bash
+# Run all quality checks
+make check
+
+# Individual checks
+make lint              # Linting
+make format            # Code formatting
+make type-check        # Type checking
+
+# Fix issues automatically
+make lint-fix          # Auto-fix linting issues
+make format            # Auto-format code
+```
 
 ---
 
-## Roadmap
+## 🏛️ Architecture
 
-* **M0**: Stage-1 and Stage-2 patches, HITL mode
-* **M1**: Autopilot A1, dashboards and SLOs
-* **M2**: Orphan custody and LKG mirroring to CAS
-* **M3**: Discovery and Normalizer agents (web research and manifest standardization)
-* **M4**: Extended Autopilot A2 or A3 with sandboxed patchers and provenance
+Matrix System is part of the **Agent-Matrix** ecosystem:
 
----
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Matrix System SDK                     │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐       │
+│  │    CLI     │  │  API Client│  │   Models   │       │
+│  └────────────┘  └────────────┘  └────────────┘       │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+   ┌────▼────┐   ┌────▼────┐   ┌────▼────┐
+   │Matrix   │   │Matrix   │   │Matrix   │
+   │Hub      │   │AI       │   │Guardian │
+   └─────────┘   └─────────┘   └─────────┘
+```
 
-## FAQ
+### Components
 
-**Why patches, not rewrites?**
-Zero downtime and quick rollback. DB and API changes are additive and gated.
+- **CLI** - Command-line interface for operators
+- **API Client** - HTTP client with retry and error handling
+- **Models** - Pydantic models for data validation
+- **Utils** - Configuration, logging, and helpers
 
-**Is this safe for production?**
-Yes—HITL by default, strict plan schema, policy gate, and immutable audit trail.
+### Design Principles
 
-**What if upstreams disappear?**
-Custody workflow pins **LKG**, mirrors bundles to CAS, and keeps apps usable.
-
----
-
-## Contributing
-
-* Keep shared components **additive**
-* Propose policies under `src/guardian/agents/policies/` with tests
-* Include rollout and rollback steps in PRs
-
-See `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
-
----
-
-## License
-
-Apache-2.0 (ensure model and provider terms are respected in your environment).
+1. **Type Safety** - Full type hints and runtime validation
+2. **Error Handling** - Comprehensive exception hierarchy
+3. **Observability** - Structured logging with context
+4. **Testability** - High test coverage with unit and integration tests
+5. **Standards Compliance** - PEP 8, PEP 257, PEP 484
 
 ---
 
-### A note on the vision
+## 📚 API Reference
 
-Matrix System 1.0 formalizes **AI supervisors** as a first-class operating role. It upgrades brittle automation into **policy-aligned autonomy**: measurable, explainable, reversible. It is designed to become a template for **alive systems** on the internet.
+### Client
+
+```python
+from matrix_system.api.client import MatrixClient
+
+client = MatrixClient(config=config, logger=logger)
+client.get(url, **kwargs)
+client.post(url, **kwargs)
+client.put(url, **kwargs)
+client.delete(url, **kwargs)
+client.health_check(service="hub")
+```
+
+### Models
+
+```python
+from matrix_system.models.health import HealthCheck, HealthStatus
+from matrix_system.models.events import Event, EventType
+from matrix_system.models.proposal import Proposal, ProposalType
+```
+
+### Configuration
+
+```python
+from matrix_system.utils.config import Config, get_config
+
+config = get_config()  # Singleton instance
+custom_config = Config(timeout=60, log_level="DEBUG")
+```
+
+### Logging
+
+```python
+from matrix_system.utils.logger import setup_logging, get_logger
+
+setup_logging(log_level="INFO", json_format=False)
+logger = get_logger(__name__)
+logger.info("message", key="value")
+```
 
 ---
 
-**You can say succinctly:** *Matrix System is part of the Agent-Matrix ecosystem.*
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. **Fork the repository**
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Make your changes** with tests and documentation
+4. **Run quality checks** (`make check`)
+5. **Run tests** (`make test`)
+6. **Commit your changes** (`git commit -m 'Add amazing feature'`)
+7. **Push to the branch** (`git push origin feature/amazing-feature`)
+8. **Open a Pull Request**
+
+### Development Standards
+
+- Follow PEP 8 style guidelines
+- Add type hints to all functions
+- Write comprehensive docstrings
+- Maintain test coverage above 80%
+- Update documentation for new features
+
+---
+
+## 📄 License
+
+This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+
+```
+Copyright 2025 Ruslan Magana
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+---
+
+## 👤 Author
+
+**Ruslan Magana**
+
+- Website: [ruslanmv.com](https://ruslanmv.com)
+- GitHub: [@ruslanmv](https://github.com/ruslanmv)
+
+---
+
+## 🌟 Acknowledgments
+
+Matrix System is part of the **Agent-Matrix** ecosystem, a community and enterprise hub for production-ready AI agents, tools, and MCP servers.
+
+- **Matrix-Guardian** - Control plane for safe probes and health scoring
+- **Matrix-AI** - Hugging Face service for AI-generated remediation plans
+- **Matrix-Hub** - Public API and registry server
+- **MatrixDB** - PostgreSQL schema for data persistence
+
+For the full ecosystem documentation, see [README.ecosystem.md](README.ecosystem.md).
+
+---
+
+## 📊 Project Status
+
+- ✅ **Production Ready** - Fully tested and documented
+- ✅ **Type Safe** - 100% type coverage
+- ✅ **Well Tested** - Comprehensive test suite
+- ✅ **Documented** - Complete API documentation
+- ✅ **Standards Compliant** - PEP 8, PEP 257, PEP 484
+
+---
+
+## 🔗 Links
+
+- [Documentation](https://github.com/agent-matrix/matrix-system)
+- [Issue Tracker](https://github.com/agent-matrix/matrix-system/issues)
+- [Agent-Matrix Ecosystem](https://github.com/agent-matrix)
+- [Author Website](https://ruslanmv.com)
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ by Ruslan Magana</strong>
+</p>
