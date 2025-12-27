@@ -1,4 +1,4 @@
-.PHONY: help install dev-install clean lint format type-check test test-cov test-unit test-integration build publish run docs serve-docs pre-commit
+.PHONY: help venv install dev-install clean lint format type-check test test-cov test-unit test-integration build publish run docs serve-docs pre-commit frontend-install frontend-dev frontend-build frontend-clean serve install-all
 
 # Colors for terminal output
 BLUE := \033[0;34m
@@ -14,6 +14,11 @@ PROJECT_NAME := matrix-system
 SRC_DIR := src/matrix_system
 TEST_DIR := tests
 
+# Frontend configuration
+FRONTEND_DIR := frontend
+NODE := node
+NPM := npm
+
 ##@ General
 
 help: ## Display this help message
@@ -25,15 +30,27 @@ help: ## Display this help message
 
 ##@ Installation
 
-install: ## Install production dependencies using uv
-	@echo "$(GREEN)Installing production dependencies...$(NC)"
-	$(UV) pip install -e .
-	@echo "$(GREEN)✓ Installation complete!$(NC)"
+venv: ## Create virtual environment
+	@echo "$(GREEN)Creating virtual environment...$(NC)"
+	@if [ ! -d ".venv" ]; then \
+		$(UV) venv; \
+		echo "$(GREEN)✓ Virtual environment created!$(NC)"; \
+	else \
+		echo "$(YELLOW)Virtual environment already exists.$(NC)"; \
+	fi
 
-dev-install: ## Install development dependencies using uv
-	@echo "$(GREEN)Installing development dependencies...$(NC)"
+install: venv ## Install backend production dependencies
+	@echo "$(GREEN)Installing backend production dependencies...$(NC)"
+	$(UV) pip install -e .
+	@echo "$(GREEN)✓ Backend installation complete!$(NC)"
+
+dev-install: ## Install backend development dependencies
+	@echo "$(GREEN)Installing backend development dependencies...$(NC)"
 	$(UV) pip install -e ".[dev]"
-	@echo "$(GREEN)✓ Development installation complete!$(NC)"
+	@echo "$(GREEN)✓ Backend development installation complete!$(NC)"
+
+install-all: install frontend-install ## Install both backend and frontend dependencies
+	@echo "$(GREEN)✓ Full installation complete!$(NC)"
 
 sync: ## Sync all dependencies using uv
 	@echo "$(GREEN)Syncing dependencies with uv...$(NC)"
@@ -133,6 +150,9 @@ run-dev: ## Run the CLI in development mode
 	@echo "$(GREEN)Running Matrix System CLI in dev mode...$(NC)"
 	$(UV) run python -m matrix_system.cli.main --help
 
+serve: frontend-dev ## Start the frontend development server
+	@echo "$(GREEN)Frontend server running at http://localhost:3000$(NC)"
+
 ##@ Documentation
 
 docs: ## Build documentation
@@ -164,7 +184,7 @@ clean: ## Clean build artifacts and cache files
 	find . -type f -name "*.py,cover" -delete
 	@echo "$(GREEN)✓ Cleanup complete!$(NC)"
 
-clean-all: clean ## Deep clean including virtual environments
+clean-all: clean frontend-clean ## Deep clean including virtual environments and frontend
 	@echo "$(YELLOW)Deep cleaning...$(NC)"
 	rm -rf .venv/
 	rm -rf venv/
@@ -201,3 +221,52 @@ info: ## Show project information
 	@echo "$(GREEN)Tests:$(NC) $(TEST_DIR)"
 	@echo "$(GREEN)Python:$(NC) $$($(PYTHON) --version)"
 	@echo "$(GREEN)UV:$(NC) $$($(UV) --version 2>/dev/null || echo 'not installed')"
+	@echo "$(GREEN)Node:$(NC) $$($(NODE) --version 2>/dev/null || echo 'not installed')"
+	@echo "$(GREEN)NPM:$(NC) $$($(NPM) --version 2>/dev/null || echo 'not installed')"
+
+##@ Frontend
+
+frontend-install: ## Install frontend dependencies
+	@echo "$(GREEN)Installing frontend dependencies...$(NC)"
+	@if [ ! -d "$(FRONTEND_DIR)" ]; then \
+		echo "$(RED)Error: Frontend directory not found!$(NC)"; \
+		exit 1; \
+	fi
+	cd $(FRONTEND_DIR) && $(NPM) install
+	@echo "$(GREEN)✓ Frontend installation complete!$(NC)"
+
+frontend-dev: ## Start frontend development server
+	@echo "$(GREEN)Starting frontend development server...$(NC)"
+	@echo "$(BLUE)Dashboard will be available at http://localhost:3000$(NC)"
+	cd $(FRONTEND_DIR) && $(NPM) run dev
+
+frontend-build: ## Build frontend for production
+	@echo "$(GREEN)Building frontend for production...$(NC)"
+	cd $(FRONTEND_DIR) && $(NPM) run build
+	@echo "$(GREEN)✓ Frontend build complete!$(NC)"
+
+frontend-start: frontend-build ## Start frontend production server
+	@echo "$(GREEN)Starting frontend production server...$(NC)"
+	cd $(FRONTEND_DIR) && $(NPM) start
+
+frontend-lint: ## Lint frontend code
+	@echo "$(GREEN)Linting frontend code...$(NC)"
+	cd $(FRONTEND_DIR) && $(NPM) run lint
+	@echo "$(GREEN)✓ Frontend linting complete!$(NC)"
+
+frontend-type-check: ## Type check frontend code
+	@echo "$(GREEN)Type checking frontend code...$(NC)"
+	cd $(FRONTEND_DIR) && $(NPM) run type-check
+	@echo "$(GREEN)✓ Frontend type checking complete!$(NC)"
+
+frontend-clean: ## Clean frontend build artifacts
+	@echo "$(YELLOW)Cleaning frontend artifacts...$(NC)"
+	@if [ -d "$(FRONTEND_DIR)" ]; then \
+		rm -rf $(FRONTEND_DIR)/node_modules; \
+		rm -rf $(FRONTEND_DIR)/.next; \
+		rm -rf $(FRONTEND_DIR)/out; \
+		rm -rf $(FRONTEND_DIR)/.vercel; \
+		echo "$(GREEN)✓ Frontend cleanup complete!$(NC)"; \
+	else \
+		echo "$(YELLOW)Frontend directory not found, skipping...$(NC)"; \
+	fi

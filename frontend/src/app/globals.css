@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --matrix-green: #00FF41;
+  --matrix-dark: #003B00;
+  --matrix-black: #0D0208;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: black;
+  color: var(--matrix-green);
+  font-family: 'Courier New', Courier, monospace;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  text-transform: uppercase;
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 5px var(--matrix-green);
+  }
+  .border-glow {
+    box-shadow: 0 0 10px var(--matrix-green);
+  }
+  .bg-glass {
+    background: rgba(0, 20, 0, 0.75);
+    backdrop-filter: blur(5px);
+  }
+}
+
+/* CRT Overlay Effects */
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  pointer-events: none;
+  background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%,
+      rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.06),
+      rgba(0, 255, 0, 0.02),
+      rgba(0, 0, 255, 0.06)
+  );
+  background-size: 100% 2px, 3px 100%;
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  50% { opacity: 1; }
+  100% { opacity: 0.98; }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s linear infinite;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateX(-5px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--matrix-black);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--matrix-green);
+}
