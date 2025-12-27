@@ -85,3 +85,26 @@ export interface SystemSettings {
 }
 
 export type ViewState = 'dashboard' | 'assistant' | 'guardian' | 'services' | 'docs';
+
+// API Response Types
+export interface EventLog {
+  event_id: string;
+  app_uid: string;
+  event_type: string;
+  severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+  message: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SystemStats {
+  total_services: number;
+  healthy_services: number;
+  degraded_services: number;
+  offline_services: number;
+  total_events: number;
+  pending_proposals: number;
+  cpu_usage?: number;
+  memory_usage?: number;
+  uptime?: string;
+}

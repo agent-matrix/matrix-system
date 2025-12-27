@@ -1,4 +1,4 @@
-.PHONY: help install dev-install clean lint format type-check test test-cov test-unit test-integration build publish run docs serve-docs pre-commit frontend-install frontend-dev frontend-build frontend-clean serve install-all
+.PHONY: help venv install dev-install clean lint format type-check test test-cov test-unit test-integration build publish run docs serve-docs pre-commit frontend-install frontend-dev frontend-build frontend-clean serve install-all
 
 # Colors for terminal output
 BLUE := \033[0;34m
@@ -30,7 +30,16 @@ help: ## Display this help message
 
 ##@ Installation
 
-install: ## Install backend production dependencies
+venv: ## Create virtual environment
+	@echo "$(GREEN)Creating virtual environment...$(NC)"
+	@if [ ! -d ".venv" ]; then \
+		$(UV) venv; \
+		echo "$(GREEN)✓ Virtual environment created!$(NC)"; \
+	else \
+		echo "$(YELLOW)Virtual environment already exists.$(NC)"; \
+	fi
+
+install: venv ## Install backend production dependencies
 	@echo "$(GREEN)Installing backend production dependencies...$(NC)"
 	$(UV) pip install -e .
 	@echo "$(GREEN)✓ Backend installation complete!$(NC)"
