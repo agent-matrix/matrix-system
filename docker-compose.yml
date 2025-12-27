@@ -1,0 +1,97 @@
+# Docker Compose for Matrix System
+# Local development and testing
+
+version: '3.8'
+
+services:
+  # Frontend Service
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-production
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-0.1.0}
+        BUILD_COMMIT: ${BUILD_COMMIT:-dev}
+        BUILD_DATE: ${BUILD_DATE:-}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_MATRIX_AI_URL=${NEXT_PUBLIC_MATRIX_AI_URL}
+      - NEXT_PUBLIC_GUARDIAN_URL=${NEXT_PUBLIC_GUARDIAN_URL}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - matrix-network
+
+  # Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-production
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-0.1.0}
+        BUILD_COMMIT: ${BUILD_COMMIT:-dev}
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHON_ENV=production
+      - MATRIX_HUB_URL=${MATRIX_HUB_URL}
+      - MATRIX_AI_URL=${MATRIX_AI_URL}
+      - API_TOKEN=${API_TOKEN}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - matrix-network
+
+  # Full Stack (Alternative - single container)
+  fullstack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fullstack
+    ports:
+      - "3000:3000"
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PYTHON_ENV=production
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health && python -c 'import sys; sys.exit(0)' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - matrix-network
+    profiles:
+      - fullstack
+
+networks:
+  matrix-network:
+    driver: bridge
+
+volumes:
+  matrix-data:
+    driver: local

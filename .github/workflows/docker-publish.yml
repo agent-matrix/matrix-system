@@ -1,0 +1,223 @@
+name: 📦 Publish Docker (Docker Hub)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (e.g., v1.2.3 or 1.2.3)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub-publish
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    name: Build & Push (Docker Hub)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Normalize version from release tag or manual input
+      - name: Derive release version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RAW="${GITHUB_REF#refs/tags/}"
+          else
+            RAW="${{ github.event.inputs.version }}"
+          fi
+          if [ -z "$RAW" ]; then
+            echo "Version not provided."; exit 1
+          fi
+          if [[ "$RAW" =~ ^v ]]; then
+            RELEASE_TAG="$RAW"
+            SEMVER="${RAW#v}"
+          else
+            RELEASE_TAG="v$RAW"
+            SEMVER="$RAW"
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "SEMVER=$SEMVER" >> $GITHUB_ENV
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+          echo "Resolved RELEASE_TAG=${RELEASE_TAG}, SEMVER=${SEMVER}, SHORT_SHA=${GITHUB_SHA::7}"
+
+      # docker.io requires lowercase namespace
+      - name: Compute image name (lowercase)
+        id: img
+        shell: bash
+        run: |
+          USER_RAW="${{ secrets.DOCKERHUB_USERNAME }}"
+          USER_LC="${USER_RAW,,}"
+          IMAGE="docker.io/${USER_LC}/matrix-system"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "Image: $IMAGE"
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Hub login
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: |
+            latest=false
+          tags: |
+            # stable semver tags (always)
+            type=raw,value=v${{ env.SEMVER }}
+            type=semver,pattern={{version}},value=${{ env.SEMVER }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.SEMVER }}
+            type=semver,pattern={{major}},value=${{ env.SEMVER }}
+            # short sha tag (always)
+            type=raw,value=sha-${{ env.SHORT_SHA }}
+            # latest only on release
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            # individual service tags
+            type=raw,value=frontend-v${{ env.SEMVER }},enable=true
+            type=raw,value=backend-v${{ env.SEMVER }},enable=true
+            type=raw,value=fullstack-v${{ env.SEMVER }},enable=true
+          labels: |
+            org.opencontainers.image.title=matrix-system
+            org.opencontainers.image.description=Matrix System — monitoring dashboard & SDK for Agent-Matrix ecosystem
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.SEMVER }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ env.BUILD_DATE }}
+
+      # Build & push frontend image
+      - name: Build & push Frontend
+        id: build-frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: frontend-production
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ env.IMAGE }}:frontend-v${{ env.SEMVER }},${{ env.IMAGE }}:frontend-latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          build-args: |
+            BUILD_VERSION=${{ env.SEMVER }}
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+
+      # Build & push backend image
+      - name: Build & push Backend
+        id: build-backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: backend-production
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ env.IMAGE }}:backend-v${{ env.SEMVER }},${{ env.IMAGE }}:backend-latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+          build-args: |
+            BUILD_VERSION=${{ env.SEMVER }}
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            PIP_INDEX_URL=${{ secrets.PIP_INDEX_URL }}
+
+      # Build & push full-stack image
+      - name: Build & push Full Stack
+        id: build-fullstack
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: fullstack
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=fullstack
+          cache-to: type=gha,mode=max,scope=fullstack
+          build-args: |
+            BUILD_VERSION=${{ env.SEMVER }}
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            GATEWAY_REF=${{ vars.GATEWAY_REF || 'main' }}
+            PIP_INDEX_URL=${{ secrets.PIP_INDEX_URL }}
+
+      # Guard 1: No baked environment files
+      - name: Sanity guard — no baked .env files
+        shell: bash
+        run: |
+          REF="${{ env.IMAGE }}:v${{ env.SEMVER }}"
+          docker run --rm --entrypoint /bin/sh "$REF" -c 'test ! -f /app/.env && test ! -f /app/frontend/.env'
+          echo "✓ No baked .env files"
+
+      # Guard 2: No baked SQLite databases
+      - name: Sanity guard — no baked SQLite DB
+        shell: bash
+        run: |
+          REF="${{ env.IMAGE }}:v${{ env.SEMVER }}"
+          docker run --rm --entrypoint /bin/sh "$REF" -c 'if find /app -maxdepth 6 -name "*.db" -o -name "*.sqlite" | grep -q .; then echo "Found SQLite DB"; exit 1; fi'
+          echo "✓ No baked SQLite databases"
+
+      - name: Inspect multi-arch manifest
+        if: always()
+        shell: bash
+        run: |
+          echo "Inspecting v${SEMVER}…"
+          docker buildx imagetools inspect "${IMAGE}:v${SEMVER}"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "Inspecting latest…"
+            docker buildx imagetools inspect "${IMAGE}:latest"
+          fi
+          echo "Inspecting frontend…"
+          docker buildx imagetools inspect "${IMAGE}:frontend-v${SEMVER}"
+          echo "Inspecting backend…"
+          docker buildx imagetools inspect "${IMAGE}:backend-v${SEMVER}"
+
+      - name: Create deployment summary
+        shell: bash
+        run: |
+          echo "## 🚀 Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Full Stack Image" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${IMAGE}:v${SEMVER}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${IMAGE}:latest" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Frontend Only" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${IMAGE}:frontend-v${SEMVER}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend Only" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${IMAGE}:backend-v${SEMVER}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ env.SEMVER }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ env.SHORT_SHA }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Built:** ${{ env.BUILD_DATE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
