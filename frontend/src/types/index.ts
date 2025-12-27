@@ -12,34 +12,76 @@ export interface HealthCheckResponse {
 
 export interface ServiceInfo {
   id: string;
-  url: string;
+  name: string;
   version: string;
+  uptime: string;
   status: 'ONLINE' | 'DEGRADED' | 'OFFLINE';
-  uptime?: string;
+  latency: number;
+  type: 'CORE' | 'AI' | 'SEC' | 'DB' | 'GATE';
+}
+
+export interface TopologyLink {
+  source: string;
+  target: string;
+}
+
+export interface LogEntry {
+  id: number;
+  type: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS' | 'CRIT';
+  source: string;
+  msg: string;
+  time?: string;
+  message?: string;
 }
 
 export interface ProposalData {
   id: string;
-  app_uid: string;
-  proposal_type: string;
-  rationale: string;
-  risk_score: number;
-  state: 'PENDING' | 'APPROVED' | 'REJECTED';
-  diff: Record<string, any>;
+  type: string;
+  risk: 'HIGH' | 'LOW' | 'MEDIUM';
+  desc: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
-export interface EventLog {
-  id: string;
-  event_type: string;
-  app_uid: string;
-  timestamp: string;
-  payload: Record<string, any>;
-  actor?: string;
+export interface AutoLogEntry {
+  id: number;
+  time: string;
+  message: string;
+  type: 'SCAN' | 'MAINT' | 'SEC' | 'HEALTH' | 'SYNC';
+  status: string;
 }
 
-export interface SystemStats {
-  integrity: number;
-  traffic_tps: number;
-  services_online: number;
-  services_total: number;
+export interface AssistantPlan {
+  summary: string;
+  steps: Array<{
+    step_number: number;
+    summary: string;
+    status?: string;
+  }>;
 }
+
+export interface AssistantMessageData {
+  from: 'user' | 'ai';
+  text?: string;
+  answer?: string;
+  plan?: AssistantPlan;
+  executionLog?: AssistantPlan;
+}
+
+export interface ProviderSettings {
+  api_key?: string;
+  model?: string;
+  model_id?: string;
+  project_id?: string;
+  base_url?: string;
+}
+
+export interface SystemSettings {
+  provider: string;
+  providers: string[];
+  openai: ProviderSettings;
+  claude: ProviderSettings;
+  watsonx: ProviderSettings;
+  ollama: ProviderSettings;
+}
+
+export type ViewState = 'dashboard' | 'assistant' | 'guardian' | 'services' | 'docs';
