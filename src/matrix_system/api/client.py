@@ -138,7 +138,14 @@ class MatrixClient:
             )
 
             if status_code in (401, 403):
-                raise MatrixAuthError(error_message, status_code) from e
+                # Helpful hint when Matrix-Hub admin endpoints are protected
+                hint = ""
+                if not self.config.api_token:
+                    hint = (
+                        " (token missing: set MATRIX_HUB_TOKEN / MATRIX_TOKEN / API_TOKEN "
+                        "for operator/admin endpoints like install/remotes/ingest)"
+                    )
+                raise MatrixAuthError(f"{error_message}{hint}", status_code) from e
             elif status_code == 404:
                 raise MatrixNotFoundError(error_message, status_code) from e
             elif status_code == 422:

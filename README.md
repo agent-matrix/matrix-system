@@ -158,8 +158,10 @@ MATRIX_HUB_URL=https://api.matrixhub.io
 MATRIX_AI_URL=https://huggingface.co/spaces/agent-matrix/matrix-ai
 MATRIX_GUARDIAN_URL=http://localhost:8080
 
-# Authentication
-API_TOKEN=your-bearer-token-here
+# Authentication (any of these work - first found wins)
+MATRIX_HUB_TOKEN=your-bearer-token-here  # preferred
+# MATRIX_TOKEN=your-bearer-token-here    # fallback alias
+# API_TOKEN=your-bearer-token-here       # backward-compatible
 
 # HTTP Configuration
 TIMEOUT=30
@@ -177,7 +179,7 @@ Create a `.env` file in your project root:
 ```env
 # .env
 MATRIX_HUB_URL=https://api.matrixhub.io
-API_TOKEN=your-secret-token
+MATRIX_HUB_TOKEN=your-secret-token  # preferred (or MATRIX_TOKEN / API_TOKEN)
 LOG_LEVEL=DEBUG
 TIMEOUT=60
 ```
