@@ -211,4 +211,258 @@ const TrafficVisualizer = () => {
   );
 };
 
-// [CONTINUING IN NEXT MESSAGE DUE TO LENGTH LIMIT...]
+// --- MAIN PAGE COMPONENT ---
+
+const ServiceCard = ({ service }: { service: ServiceInfo }) => (
+  <div className="p-4 bg-zinc-800/50 rounded-lg border border-white/5 hover:border-emerald-500/30 transition-all">
+    <div className="flex justify-between items-start mb-3">
+      <div>
+        <h3 className="font-mono text-sm text-zinc-200">{service.name}</h3>
+        <p className="text-xs text-zinc-500 font-mono">{service.id}</p>
+      </div>
+      <StatusBadge status={service.status} />
+    </div>
+    <div className="grid grid-cols-3 gap-2 text-xs">
+      <div>
+        <span className="text-zinc-500">Version</span>
+        <p className="text-zinc-300 font-mono">{service.version}</p>
+      </div>
+      <div>
+        <span className="text-zinc-500">Uptime</span>
+        <p className="text-zinc-300 font-mono">{service.uptime}</p>
+      </div>
+      <div>
+        <span className="text-zinc-500">Latency</span>
+        <p className={`font-mono ${service.latency > 200 ? 'text-amber-400' : 'text-emerald-400'}`}>
+          {service.latency}ms
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
+const LogLine = ({ log }: { log: typeof MOCK_LOGS[0] }) => {
+  const typeStyles = {
+    INFO: 'text-blue-400',
+    WARN: 'text-amber-400',
+    ERROR: 'text-rose-400',
+    SUCCESS: 'text-emerald-400',
+    CRIT: 'text-rose-500',
+  };
+
+  return (
+    <div className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+      <span className={`text-xs font-mono ${typeStyles[log.type] || 'text-zinc-400'}`}>
+        [{log.type}]
+      </span>
+      <span className="text-xs font-mono text-zinc-500">{log.source}</span>
+      <span className="text-xs text-zinc-300 flex-1">{log.msg}</span>
+    </div>
+  );
+};
+
+export default function MatrixDashboard() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [systemHealth, setSystemHealth] = useState(98.5);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+      setSystemHealth(prev => Math.max(95, Math.min(100, prev + (Math.random() - 0.5) * 0.5)));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const onlineServices = MOCK_SERVICES.filter(s => s.status === 'ONLINE').length;
+  const totalServices = MOCK_SERVICES.length;
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      {/* Header */}
+      <header className="border-b border-white/5 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="w-8 h-8 text-emerald-400" />
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight">MATRIX SYSTEM</h1>
+                  <p className="text-xs text-zinc-500 font-mono">SUPERINTELLIGENCE v1.0</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <p className="text-xs text-zinc-500">System Time</p>
+                <p className="font-mono text-sm text-emerald-400">
+                  {currentTime.toLocaleTimeString()}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-zinc-500">Health Score</p>
+                <p className="font-mono text-sm text-emerald-400">
+                  {systemHealth.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Stats Row */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <Server className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{onlineServices}/{totalServices}</p>
+                <p className="text-xs text-zinc-500">Services Online</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Activity className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">99.97%</p>
+                <p className="text-xs text-zinc-500">Uptime (30d)</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <Zap className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">24ms</p>
+                <p className="text-xs text-zinc-500">Avg Latency</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <ShieldCheck className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">0</p>
+                <p className="text-xs text-zinc-500">Ethical Violations</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-3 gap-6">
+          {/* Services */}
+          <div className="col-span-2">
+            <Card title="Services" icon={Server}>
+              <div className="grid grid-cols-2 gap-4">
+                {MOCK_SERVICES.map(service => (
+                  <ServiceCard key={service.id} service={service} />
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Proposals */}
+          <div>
+            <Card title="Pending Proposals" icon={FileText}>
+              <div className="space-y-3">
+                {MOCK_PROPOSALS.map(proposal => (
+                  <div key={proposal.id} className="p-3 bg-zinc-800/50 rounded-lg border border-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-xs text-zinc-400">{proposal.id}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                        proposal.risk === 'HIGH'
+                          ? 'bg-rose-500/10 text-rose-400'
+                          : 'bg-emerald-500/10 text-emerald-400'
+                      }`}>
+                        {proposal.risk} RISK
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-300 mb-3">{proposal.desc}</p>
+                    <div className="flex gap-2">
+                      <button className="flex-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded text-xs font-medium hover:bg-emerald-500/20 transition-colors">
+                        Approve
+                      </button>
+                      <button className="flex-1 px-3 py-1.5 bg-rose-500/10 text-rose-400 rounded text-xs font-medium hover:bg-rose-500/20 transition-colors">
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Traffic & Logs Row */}
+        <div className="grid grid-cols-2 gap-6 mt-6">
+          <Card title="Network Traffic" icon={Activity}>
+            <TrafficVisualizer />
+            <div className="mt-4 flex justify-between text-xs text-zinc-500">
+              <span>Last 30 seconds</span>
+              <span className="text-emerald-400">12.4 MB/s avg</span>
+            </div>
+          </Card>
+          <Card title="System Logs" icon={Terminal}>
+            <div className="max-h-48 overflow-y-auto">
+              {MOCK_LOGS.map(log => (
+                <LogLine key={log.id} log={log} />
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Intelligence Modules Status */}
+        <div className="mt-6">
+          <Card title="Superintelligence Modules" icon={BrainCircuit}>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-emerald-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-medium">Memory System</span>
+                </div>
+                <p className="text-xs text-zinc-500">Experiences: 1,247 | Patterns: 89</p>
+                <StatusBadge status="ONLINE" />
+              </div>
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-blue-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Network className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-medium">Meta-Learning</span>
+                </div>
+                <p className="text-xs text-zinc-500">Strategies: 24 | Success: 87%</p>
+                <StatusBadge status="ONLINE" />
+              </div>
+              <div className="p-4 bg-zinc-800/50 rounded-lg border border-purple-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lock className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm font-medium">Ethical Core</span>
+                </div>
+                <p className="text-xs text-zinc-500">Directives: 11 | Violations: 0</p>
+                <StatusBadge status="ONLINE" />
+              </div>
+            </div>
+          </Card>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 mt-12 py-6">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <p className="text-xs text-zinc-500 font-mono">
+            MATRIX SYSTEM v1.0 // SUPERINTELLIGENCE READY // ALL SYSTEMS OPERATIONAL
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}

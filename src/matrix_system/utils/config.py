@@ -7,7 +7,7 @@ Pydantic settings with support for environment variables and .env files.
 
 from typing import Optional
 
-from pydantic import Field, HttpUrl, field_validator
+from pydantic import AliasChoices, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,7 @@ class Config(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,  # Allow both field name and aliases
     )
 
     # API Endpoints
@@ -54,6 +55,11 @@ class Config(BaseSettings):
     api_token: Optional[str] = Field(
         default=None,
         description="Bearer token for API authentication",
+        validation_alias=AliasChoices(
+            "MATRIX_HUB_TOKEN",  # preferred in ecosystem/CLI
+            "MATRIX_TOKEN",      # fallback alias
+            "API_TOKEN",         # backward-compatible
+        ),
     )
 
     # HTTP Configuration

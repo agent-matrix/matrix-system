@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 
 class EventType(str, Enum):
@@ -59,6 +59,28 @@ class Event(BaseModel):
         timestamp: When the event occurred
         metadata: Additional metadata about the event
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": 12345,
+                "event_type": "guardian.plan",
+                "app_uid": "app-123",
+                "payload": {
+                    "plan": {
+                        "action": "pin_lkg",
+                        "version": "1.2.3",
+                    }
+                },
+                "actor": "matrix-guardian",
+                "timestamp": "2025-01-15T10:30:00Z",
+                "metadata": {
+                    "source": "health_monitor",
+                    "severity": "low",
+                },
+            }
+        }
+    )
 
     id: Optional[int] = Field(
         default=None,
@@ -119,29 +141,6 @@ class Event(BaseModel):
             EventType.AUTOPILOT_ACTION,
         }
         return self.event_type in success_types
-
-    class Config:
-        """Pydantic model configuration."""
-
-        json_schema_extra = {
-            "example": {
-                "id": 12345,
-                "event_type": "guardian.plan",
-                "app_uid": "app-123",
-                "payload": {
-                    "plan": {
-                        "action": "pin_lkg",
-                        "version": "1.2.3",
-                    }
-                },
-                "actor": "matrix-guardian",
-                "timestamp": "2025-01-15T10:30:00Z",
-                "metadata": {
-                    "source": "health_monitor",
-                    "severity": "low",
-                },
-            }
-        }
 
 
 class EventFilter(BaseModel):

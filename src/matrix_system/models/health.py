@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import ConfigDict, BaseModel, Field, field_validator
 
 
 class HealthStatus(str, Enum):
@@ -47,6 +47,22 @@ class HealthCheck(BaseModel):
         timestamp: When the check was performed
         last_checked: When the entity was last checked
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "app_uid": "app-123",
+                "check_type": "http",
+                "result": "pass",
+                "latency_ms": 45.2,
+                "status": "healthy",
+                "score": 95.5,
+                "reasons": {"message": "All checks passed"},
+                "timestamp": "2025-01-15T10:30:00Z",
+                "last_checked": "2025-01-15T10:30:00Z",
+            }
+        }
+    )
 
     app_uid: str = Field(
         ...,
@@ -132,23 +148,6 @@ class HealthCheck(BaseModel):
             True if status is UNHEALTHY, False otherwise
         """
         return self.status == HealthStatus.UNHEALTHY
-
-    class Config:
-        """Pydantic model configuration."""
-
-        json_schema_extra = {
-            "example": {
-                "app_uid": "app-123",
-                "check_type": "http",
-                "result": "pass",
-                "latency_ms": 45.2,
-                "status": "healthy",
-                "score": 95.5,
-                "reasons": {"message": "All checks passed"},
-                "timestamp": "2025-01-15T10:30:00Z",
-                "last_checked": "2025-01-15T10:30:00Z",
-            }
-        }
 
 
 class HealthSummary(BaseModel):

@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 
 class ProposalState(str, Enum):
@@ -79,6 +79,27 @@ class Proposal(BaseModel):
         executed_at: When the proposal was executed
         metadata: Additional proposal metadata
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": 456,
+                "app_uid": "app-123",
+                "proposal_type": "lkg_pin",
+                "state": "pending",
+                "diff": {
+                    "action": "pin_version",
+                    "from_version": "1.2.4",
+                    "to_version": "1.2.3",
+                },
+                "rationale": "Version 1.2.4 has failing health checks",
+                "risk_score": 15.0,
+                "proposed_by": "matrix-ai",
+                "created_at": "2025-01-15T10:30:00Z",
+                "updated_at": "2025-01-15T10:30:00Z",
+            }
+        }
+    )
 
     id: Optional[int] = Field(
         default=None,
@@ -198,25 +219,3 @@ class Proposal(BaseModel):
             True if risk_score is above 70
         """
         return self.risk_score > 70.0
-
-    class Config:
-        """Pydantic model configuration."""
-
-        json_schema_extra = {
-            "example": {
-                "id": 456,
-                "app_uid": "app-123",
-                "proposal_type": "lkg_pin",
-                "state": "pending",
-                "diff": {
-                    "action": "pin_version",
-                    "from_version": "1.2.4",
-                    "to_version": "1.2.3",
-                },
-                "rationale": "Version 1.2.4 has failing health checks",
-                "risk_score": 15.0,
-                "proposed_by": "matrix-ai",
-                "created_at": "2025-01-15T10:30:00Z",
-                "updated_at": "2025-01-15T10:30:00Z",
-            }
-        }
